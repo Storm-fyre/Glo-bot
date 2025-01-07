@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, session, redirect, url_for
+import os
 import code  # Your logic in 'code.py'
 
 app = Flask(__name__)
@@ -158,5 +159,6 @@ def index():
     )
 
 if __name__ == "__main__":
-    # Run locally: http://127.0.0.1:5000
-    app.run()
+    # Render will provide the PORT environment variable
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
