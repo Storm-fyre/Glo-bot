@@ -15,18 +15,20 @@ def get_tolerance(dist_value):
     If distance is smaller, we use a smaller tolerance (±100, ±200).
     Adjust to taste.
     """
-    if dist_value > 10000:
-        return 500
-    elif dist_value > 8000:
-        return 400
-    elif dist_value > 6000:
+    dist_value=75
+    
+    """if dist_value > 10000:
         return 300
-    elif dist_value > 3000:
+    elif dist_value > 8000:
+        return 250
+    elif dist_value > 6000:
         return 200
-    elif dist_value > 1000:
+    elif dist_value > 3000:
         return 150
-    else:
+    elif dist_value > 1000:
         return 100
+    else:
+        return 75"""
 
 ##############################################################################
 # 2) LOADING & FILTERING DATA
