@@ -15,8 +15,8 @@ def get_tolerance(dist_value):
     If distance is smaller, we use a smaller tolerance (±100, ±200).
     Adjust to taste.
     """
-    dist_value=75
-    
+    return 75
+
     """if dist_value > 10000:
         return 300
     elif dist_value > 8000:
