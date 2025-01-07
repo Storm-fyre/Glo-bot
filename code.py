@@ -8,27 +8,26 @@ import os
 JSON_FILENAME = "country_distances.json"
 DISTANCE_UNKNOWN = 9999999
 
-def get_tolerance(dist_value):
-    """
-    Return how many km of tolerance to apply, given the reported distance.
-    If distance is large (>6000), we treat it as very imprecise (±1000, ±1500, etc.).
-    If distance is smaller, we use a smaller tolerance (±100, ±200).
-    Adjust to taste.
-    """
-    return 75
+# List of mischievous countries with their custom tolerance settings
+MISCHIEVOUS_COUNTRIES = {
+    "canada": {
+        "tolerance": 500,
+        "distance_threshold": 2500
+    },
+    # Add more mischievous countries here as needed
+}
 
-    """if dist_value > 10000:
-        return 300
-    elif dist_value > 8000:
-        return 250
-    elif dist_value > 6000:
-        return 200
-    elif dist_value > 3000:
-        return 150
-    elif dist_value > 1000:
-        return 100
-    else:
-        return 75"""
+def get_tolerance(guess_country, dist_value):
+    """
+    Returns the tolerance based on the guess_country and the reported distance.
+    For mischievous countries, applies custom tolerance rules.
+    Otherwise, returns the default tolerance.
+    """
+    if guess_country in MISCHIEVOUS_COUNTRIES:
+        config = MISCHIEVOUS_COUNTRIES[guess_country]
+        if dist_value > config["distance_threshold"]:
+            return config["tolerance"]
+    return 50  # Default tolerance
 
 ##############################################################################
 # 2) LOADING & FILTERING DATA
@@ -56,12 +55,12 @@ def get_supported_countries(distance_map):
 # 3) REFINEMENT LOGIC
 ##############################################################################
 
-def match_distance_with_tolerance(actual_dist, reported_dist):
+def match_distance_with_tolerance(actual_dist, reported_dist, guess_country):
     """
     Check if 'actual_dist' is within ±some tolerance of 'reported_dist',
-    where that tolerance depends on 'reported_dist'.
+    where that tolerance depends on 'reported_dist' and the guess_country.
     """
-    tol = get_tolerance(reported_dist)
+    tol = get_tolerance(guess_country, reported_dist)
     low = reported_dist - tol
     high = reported_dist + tol
     return (low <= actual_dist <= high)
@@ -77,7 +76,7 @@ def refine_distance_with_tolerance(distance_map, possible_targets, guess_country
         if dist_c == DISTANCE_UNKNOWN:
             # skip
             continue
-        if match_distance_with_tolerance(dist_c, reported_dist):
+        if match_distance_with_tolerance(dist_c, reported_dist, guess_country):
             new_possible.add(c)
     return new_possible
 
@@ -150,12 +149,17 @@ def main():
     possible_targets = set(supported)
 
     # A small helper function to pick a "next guess" from possible_targets
-    # For demonstration, we pick the first in the set that wasn't guessed before.
+    # Mischievous countries are picked last
     def pick_next_guess(possible_set, guesses_so_far):
-        for c in possible_set:
+        non_mischief = [c for c in possible_set if c not in MISCHIEVOUS_COUNTRIES]
+        for c in non_mischief:
             if c not in guesses_so_far:
                 return c
-        # fallback if everything is guessed
+        # If no non-mischief left, pick from mischief
+        for c in possible_set:
+            if c not in guesses_so_far and c in MISCHIEVOUS_COUNTRIES:
+                return c
+        # Fallback if everything is guessed
         return next(iter(possible_set)) if possible_set else None
 
     # 1) Ask user for the first guess
