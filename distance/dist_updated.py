@@ -111,19 +111,23 @@ SYNONYM_MAP = {
 
 # ------------------- 1.3 Sample Size Mapping -------------------
 SAMPLE_SIZE_MAP = {
-    'russia': 1000,
-    'canada': 1000,
+    'canada': 1600,
+    'russia': 1200,
     'china': 800,
     'united states': 800,
-    'brazil': 500,
-    'australia': 500,
-    'india': 500,
-    'indonesia': 500,
-    'philipines': 500,
-    'japan': 500,
+    'norway': 800,
+    'indonesia': 800,
+    'brazil': 800,
+    'australia': 800,
+    'india': 800,
+    'philippines': 800,
+    'japan': 800,
+    'argentina': 800,
+    'mexico': 800,
+    'kazakhstan': 800,
 }
 
-DEFAULT_SAMPLE_SIZE = 300
+DEFAULT_SAMPLE_SIZE = 600
 
 def get_sample_size(country: str) -> int:
     """
@@ -135,10 +139,14 @@ def get_sample_size(country: str) -> int:
 POLYGON_SELECTION_RULES = {
     'angola':            {'count': 2},
     'azerbaijan':        {'count': 2},
+    'bahamas':           {'count': 3},
+    'canada':            {'all':True},
     'chile':             {'distance_threshold': 500},   # exclude Easter Island
     'china':             {'count': 2},                  # Mainland + Hainan (exclude Taiwan)
+    'cuba':              {'count': 2},
     'denmark':           {'count': 3},                  # exclude Faroe, Greenland
     'equatorial guinea': {'count': 2},
+    'equador':           {'count': 2},
     'france':            {'count': 1},                  # exclude Corsica
     'greece':            {'count': 3},                  # Mainland, Crete, Lesbos
     'indonesia':         {'all': True},
@@ -156,6 +164,8 @@ POLYGON_SELECTION_RULES = {
     'russia':            {'all': True},  # but filter out Kaliningrad below
     'south korea':       {'count': 2},
     'spain':             {'count': 2},   # Mainland + Balearics; exclude Canary
+    'sweden':            {'count': 2},
+    'solomon islands':   {'count': 4},
     'timor-leste':       {'count': 2},
     'turkey':            {'count': 1},
     'united kingdom':    {'count': 3},   # GB, Northern Ireland, Lewis/Harris
@@ -197,9 +207,6 @@ MICRONATION_COORDS = {
     "vatican city": (12.4534, 41.9029)
 }
 
-# ------------------- 1.6 Boundary Sample Settings -------------------
-# Removed the global BOUNDARY_SAMPLES as we are using dynamic sample sizes.
-
 ##############################################################################
 # 2. HELPER FUNCTIONS
 ##############################################################################
@@ -214,10 +221,11 @@ def geodesic_distance(lon1, lat1, lon2, lat2):
     _, _, dist_m = geod.inv(lon1, lat1, lon2, lat2)
     return dist_m / 1000.0
 
-def distance_polygon_to_polygon(polyA, polyB, samples):
+def distance_polygon_to_polygon(polyA, polyB, samplesA, samplesB):
     """
     Approx. minimal geodesic distance between boundaries of two polygons
-    by sampling their boundaries. Returns distance in km or None if empty.
+    by sampling their boundaries with separate sample sizes.
+    Returns distance in km or None if empty.
     """
     if not polyA or polyA.is_empty or not polyB or polyB.is_empty:
         return None
@@ -228,21 +236,21 @@ def distance_polygon_to_polygon(polyA, polyB, samples):
     lenA = boundaryA.length
     lenB = boundaryB.length
 
-    stepA = lenA / samples
-    stepB = lenB / samples
+    stepA = lenA / samplesA
+    stepB = lenB / samplesB
 
     min_dist = float('inf')
 
     # Sample boundary of polyA
     ptsA = []
-    for i in range(samples + 1):
+    for i in range(samplesA + 1):
         dA = i * stepA
         ptA = boundaryA.interpolate(dA)
         ptsA.append((ptA.x, ptA.y))
 
     # Sample boundary of polyB
     ptsB = []
-    for j in range(samples + 1):
+    for j in range(samplesB + 1):
         dB = j * stepB
         ptB = boundaryB.interpolate(dB)
         ptsB.append((ptB.x, ptB.y))
@@ -328,9 +336,6 @@ def distance_point_to_polygon(point_lon, point_lat, poly, samples):
 # 3. MAINLAND FILTERING LOGIC
 ##############################################################################
 
-from shapely.geometry import MultiPolygon, Polygon, Point
-from shapely.ops import unary_union
-
 def filter_polygons(multi_or_poly, country_name):
     """
     Returns a (Multi)Polygon for the “mainland” of a country based on your rules,
@@ -407,7 +412,25 @@ def filter_polygons(multi_or_poly, country_name):
         else:
             return None
 
-    # 4) Standard selection
+    # 4) Norway => Add buffer around (16.0, 68.5)
+    if country_name == 'norway':
+        # Step 1: Sort polygons by area and select the largest (assuming it's the mainland)
+        polygons_sorted = sorted(polygons, key=lambda p: p.area, reverse=True)
+        main_poly = polygons_sorted[0] if polygons_sorted else None
+
+        # Step 2: Create a buffer polygon around (16.0, 68.5)
+        norway_extra_point = Point(16.0, 68.5)
+        # Buffer size in degrees; adjust as needed. Here, 0.05 degrees ~5.5 km
+        norway_buffer = norway_extra_point.buffer(0.05)
+
+        # Combine the mainland polygon with the buffer
+        if main_poly:
+            combined = unary_union([main_poly, norway_buffer])
+            return combined
+        else:
+            return norway_buffer  # If no mainland polygon, return only the buffer
+
+    # 5) Standard selection
     polygons_sorted = sorted(polygons, key=lambda p: p.area, reverse=True)
     if not polygons_sorted:
         return None
@@ -432,7 +455,6 @@ def filter_polygons(multi_or_poly, country_name):
 
     # Default => largest polygon
     return polygons_sorted[0]
-
 
 ##############################################################################
 # 4. MAIN SCRIPT
@@ -511,46 +533,60 @@ def main():
     print(f"\nComputing pairwise distances among {num_countries} countries...")
     start_time = time.time()
 
-    for i, c1 in enumerate(all_countries_sorted, start=1):
-        print(f"[{i}/{num_countries}] Computing distances from '{c1}'...")
-        poly1 = final_polygons[c1]
+    # Initialize distance_map
+    for c1 in all_countries_sorted:
         distance_map[c1] = {}
-        sample_size = get_sample_size(c1)  # Dynamic sample size based on c1
 
-        for c2 in all_countries_sorted:
+    for i, c1 in enumerate(all_countries_sorted, start=1):
+        print(f"[{i}/{num_countries}] Preparing distances for '{c1}'...")
+        poly1 = final_polygons[c1]
+        sample_size1 = get_sample_size(c1)
+
+        for j, c2 in enumerate(all_countries_sorted, start=1):
+            if j < i:
+                # Distance already computed (symmetry)
+                distance_map[c1][c2] = distance_map[c2][c1]
+                continue
+
             if c1 == c2:
                 distance_map[c1][c2] = 0.0
                 continue
 
             poly2 = final_polygons[c2]
+            sample_size2 = get_sample_size(c2)
 
-            # A) polygon vs. polygon
+            # Case A: Both have polygons
             if poly1 and poly2:
-                dist_km = distance_polygon_to_polygon(poly1, poly2, samples=sample_size)
+                dist_km = distance_polygon_to_polygon(poly1, poly2, sample_size1, sample_size2)
                 distance_map[c1][c2] = round(dist_km, 1) if dist_km is not None else 9999999
+                distance_map[c2][c1] = distance_map[c1][c2]  # Symmetric
 
-            # B) micronation vs. micronation
+            # Case B: Both are micronations
             elif (c1 in MICRONATION_COORDS) and (c2 in MICRONATION_COORDS):
                 lon1, lat1 = MICRONATION_COORDS[c1]
                 lon2, lat2 = MICRONATION_COORDS[c2]
                 dist_km = distance_point_to_point(lon1, lat1, lon2, lat2)
                 distance_map[c1][c2] = round(dist_km, 1)
+                distance_map[c2][c1] = distance_map[c1][c2]  # Symmetric
 
-            # C) polygon vs. micronation
+            # Case C: c1 has polygon, c2 is micronation
             elif poly1 and (c2 in MICRONATION_COORDS):
                 lon2, lat2 = MICRONATION_COORDS[c2]
-                dist_km = distance_point_to_polygon(lon2, lat2, poly1, samples=sample_size)
+                dist_km = distance_point_to_polygon(lon2, lat2, poly1, sample_size1)
                 distance_map[c1][c2] = round(dist_km, 1) if dist_km is not None else 9999999
+                distance_map[c2][c1] = distance_map[c1][c2]  # Symmetric
 
-            # D) micronation vs. polygon
+            # Case D: c2 has polygon, c1 is micronation
             elif poly2 and (c1 in MICRONATION_COORDS):
                 lon1, lat1 = MICRONATION_COORDS[c1]
-                dist_km = distance_point_to_polygon(lon1, lat1, poly2, samples=sample_size)
+                dist_km = distance_point_to_polygon(lon1, lat1, poly2, sample_size2)
                 distance_map[c1][c2] = round(dist_km, 1) if dist_km is not None else 9999999
+                distance_map[c2][c1] = distance_map[c1][c2]  # Symmetric
 
             else:
                 # No polygon, no coords => fallback
                 distance_map[c1][c2] = 9999999
+                distance_map[c2][c1] = 9999999
 
         print(f"   Done with '{c1}'.")
 

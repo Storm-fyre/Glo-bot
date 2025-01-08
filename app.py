@@ -1,20 +1,19 @@
 from flask import Flask, render_template, request, session, redirect, url_for
 import os
-import code  # Your logic in 'code.py'
+import code_logic  # Renamed to avoid confusion with the built-in 'code' module
 
 app = Flask(__name__)
 app.secret_key = "SOME_RANDOM_SECRET_KEY_HERE"
 
 # Load global data
-distance_map = code.load_distance_data("country_distances.json")
-supported = code.get_supported_countries(distance_map)
+distance_map = code_logic.load_distance_data("country_distances.json")
+supported = code_logic.get_supported_countries(distance_map)
 
 def pick_next_guess(possible_set, guesses_so_far):
-    """Pick the next guess from possible_set that hasn't been guessed before."""
-    for c in possible_set:
-        if c not in guesses_so_far:
-            return c
-    return None
+    """
+    Pick the next guess that minimizes the number of times 'cooler' feedback would be required.
+    """
+    return code_logic.pick_next_guess_minimize_cooler(distance_map, possible_set, guesses_so_far)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -36,29 +35,41 @@ def index():
 
         # =========== FIRST GUESS FORM =============
         if form_type == "first_guess":
+            action = request.form.get("action", "")
             first_guess = request.form.get("first_guess_input", "").strip().lower()
-            first_distance_str = request.form.get("first_distance_input", "").strip()
 
             if first_guess not in supported:
                 session["message"] = f"'{first_guess}' is not recognized or not supported."
                 return redirect(url_for("index"))
 
-            # Parse distance
-            try:
-                first_dist = float(first_distance_str)
-            except ValueError:
-                session["message"] = "Invalid first guess distance."
-                return redirect(url_for("index"))
+            if action == "adjacent":
+                # Refine possible targets based on adjacency
+                possible_targets = code_logic.refine_adjacent(distance_map, possible_targets, first_guess)
+                guesses.append(first_guess)
+                last_guess = first_guess
 
-            # Refine possible targets
-            possible_targets = code.refine_distance_with_tolerance(
-                distance_map, 
-                possible_targets, 
-                first_guess, 
-                first_dist
-            )
-            guesses.append(first_guess)
-            last_guess = first_guess
+            elif action == "submit_distance":
+                first_distance_str = request.form.get("first_distance_input", "").strip()
+
+                # Parse distance
+                try:
+                    first_dist = float(first_distance_str)
+                except ValueError:
+                    session["message"] = "Invalid first guess distance."
+                    return redirect(url_for("index"))
+
+                # Refine possible targets based on distance
+                possible_targets = code_logic.refine_distance_with_tolerance(
+                    distance_map, 
+                    possible_targets, 
+                    first_guess, 
+                    first_dist
+                )
+                guesses.append(first_guess)
+                last_guess = first_guess
+            else:
+                session["message"] = "Invalid action for first guess."
+                return redirect(url_for("index"))
 
             # Pick next guess automatically if multiple remain
             if len(possible_targets) > 1:
@@ -74,17 +85,13 @@ def index():
             session["message"] = ""
             return redirect(url_for("index"))
 
-        # =========== FEEDBACK: COOLER / WARMER / ADJACENT / DONE ============
+        # =========== FEEDBACK: COOLER / WARMER / ADJACENT ============
         elif form_type == "feedback":
             action = request.form.get("action", "")
             current_guess = guesses[-1] if guesses else None
 
             if not current_guess:
                 session["message"] = "No guess to evaluate feedback for. Please restart."
-                return redirect(url_for("index"))
-
-            if action == "done":
-                session["message"] = "Game ended by user."
                 return redirect(url_for("index"))
 
             if action == "warmer":
@@ -99,18 +106,18 @@ def index():
                     session["message"] = "Not enough guesses to compare cooler/warmer."
                     return redirect(url_for("index"))
                 old_guess = guesses[-2]
-                possible_targets = code.refine_warmer(distance_map, possible_targets, old_guess, current_guess)
-                possible_targets = code.refine_distance_with_tolerance(distance_map, possible_targets, current_guess, warmer_dist)
+                possible_targets = code_logic.refine_warmer(distance_map, possible_targets, old_guess, current_guess)
+                possible_targets = code_logic.refine_distance_with_tolerance(distance_map, possible_targets, current_guess, warmer_dist)
 
             elif action == "cooler":
                 if len(guesses) < 2:
                     session["message"] = "Not enough guesses to compare cooler/warmer."
                     return redirect(url_for("index"))
                 old_guess = guesses[-2]
-                possible_targets = code.refine_further(distance_map, possible_targets, old_guess, current_guess)
+                possible_targets = code_logic.refine_further(distance_map, possible_targets, old_guess, current_guess)
 
             elif action == "adjacent":
-                possible_targets = code.refine_adjacent(distance_map, possible_targets, current_guess)
+                possible_targets = code_logic.refine_adjacent(distance_map, possible_targets, current_guess)
 
             # Remove the current guess from possibilities
             if current_guess in possible_targets:
@@ -149,13 +156,17 @@ def index():
     # The current guess is always the last guessed item
     current_guess = guesses[-1] if guesses else None
 
+    # Prepare the list of guesses for display
+    display_guesses = [guess.upper() for guess in guesses]
+
     return render_template(
         "index.html",
         message=message,
-        current_guess=current_guess,
+        current_guess=current_guess.upper() if current_guess else None,
         possible_count=possible_count,
-        final_solution=final_solution,
-        contradiction=contradiction
+        final_solution=final_solution.upper() if final_solution else None,
+        contradiction=contradiction,
+        guesses=display_guesses
     )
 
 if __name__ == "__main__":

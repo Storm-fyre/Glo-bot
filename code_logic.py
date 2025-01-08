@@ -11,8 +11,8 @@ DISTANCE_UNKNOWN = 9999999
 # List of mischievous countries with their custom tolerance settings
 
 MISCHIEVOUS_COUNTRIES = {
-#    "canada": {"tolerance": 500,"distance_threshold": 2500},
-#     Add more mischievous countries here as needed
+    # "canada": {"tolerance": 500, "distance_threshold": 2500},
+    # Add more mischievous countries here as needed
 }
 
 def get_tolerance(guess_country, dist_value):
@@ -34,7 +34,7 @@ def get_tolerance(guess_country, dist_value):
         return 75
     else:
         return 50
-    #return 50  Default tolerance
+    # return 50  Default tolerance
 
 ##############################################################################
 # 2) LOADING & FILTERING DATA
@@ -140,7 +140,50 @@ def refine_adjacent(distance_map, possible_targets, guess_country, threshold=10)
     return new_possible
 
 ##############################################################################
-# 4) MAIN SOLVER LOGIC
+# 4) GUESS SELECTION LOGIC
+##############################################################################
+
+def pick_next_guess_minimize_cooler(distance_map, possible_set, guesses_so_far):
+    """
+    Select the next guess from possible_set that minimizes the number of 'cooler' responses.
+    For each potential guess N, count how many targets T would result in N being cooler than the current guess C.
+    Select N with the lowest such count.
+    """
+    if not guesses_so_far:
+        # If no guesses yet, just pick the first possible country
+        return next(iter(possible_set))
+
+    current_guess = guesses_so_far[-1]
+    min_cooler_count = None
+    best_guess = None
+
+    for candidate in possible_set:
+        if candidate in guesses_so_far:
+            continue  # Skip already guessed countries
+
+        cooler_count = 0
+        for target in possible_set:
+            if target == candidate:
+                continue  # Skip if target is the candidate itself
+
+            dist_current = distance_map[current_guess].get(target, DISTANCE_UNKNOWN)
+            dist_candidate = distance_map[candidate].get(target, DISTANCE_UNKNOWN)
+
+            if dist_current == DISTANCE_UNKNOWN or dist_candidate == DISTANCE_UNKNOWN:
+                continue  # Skip if distance data is missing
+
+            if dist_candidate > dist_current:
+                cooler_count += 1
+
+        # Update the best_guess if this candidate has a lower cooler_count
+        if min_cooler_count is None or cooler_count < min_cooler_count:
+            min_cooler_count = cooler_count
+            best_guess = candidate
+
+    return best_guess
+
+##############################################################################
+# 5) MAIN SOLVER LOGIC (Optional for Command-Line Usage)
 ##############################################################################
 
 def main():
@@ -208,7 +251,7 @@ def main():
             break
 
         # 3) Suggest next guess
-        next_guess = pick_next_guess(possible_targets, guesses)
+        next_guess = pick_next_guess_minimize_cooler(distance_map, possible_targets, guesses)
         if not next_guess:
             print("No next guess found. Possibly we've guessed everything. Stopping.")
             break
@@ -235,12 +278,20 @@ def main():
                 print("Invalid distance value for 'warmer'. Exiting.")
                 break
             # Refine based on warmer
-            possible_targets = refine_warmer(distance_map, possible_targets, last_guess, next_guess)
+            if len(guesses) < 2:
+                print("Not enough guesses to compare cooler/warmer. Exiting.")
+                break
+            old_guess = guesses[-2]
+            possible_targets = refine_warmer(distance_map, possible_targets, old_guess, next_guess)
             # Refine based on distance tolerance
             possible_targets = refine_distance_with_tolerance(distance_map, possible_targets, next_guess, warmer_dist)
         elif dist_str == "cooler":
             # new_guess is further away from target than last_guess
-            possible_targets = refine_further(distance_map, possible_targets, last_guess, next_guess)
+            if len(guesses) < 2:
+                print("Not enough guesses to compare cooler/warmer. Exiting.")
+                break
+            old_guess = guesses[-2]
+            possible_targets = refine_further(distance_map, possible_targets, old_guess, next_guess)
         elif dist_str == "adjacent":
             # new_guess shares a border with the target
             possible_targets = refine_adjacent(distance_map, possible_targets, next_guess)
@@ -258,7 +309,7 @@ def main():
     # When 'done' is entered or loop is broken, do nothing else
 
 ##############################################################################
-# 5) RUN MAIN
+# 6) RUN MAIN
 ##############################################################################
 
 if __name__ == "__main__":

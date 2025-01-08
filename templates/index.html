@@ -41,9 +41,22 @@
       color: #fff;
       border: none;
       border-radius: 4px;
+      transition: background 0.3s;
     }
     .btn:hover {
       background: #0056b3;
+    }
+    .btn-adjacent {
+      background: #FF4C4C; /* Red color */
+    }
+    .btn-adjacent:hover {
+      background: #cc0000;
+    }
+    .btn-cooler {
+      background: #FFB347; /* Merigold color */
+    }
+    .btn-cooler:hover {
+      background: #ffa500;
     }
     .btn-secondary {
       background: #6c757d;
@@ -55,11 +68,20 @@
     input[type="number"] {
       padding: 6px;
       margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
     }
     .highlight-guess {
       font-size: 1.75em;
-      color: #007BFF;
+      color: #28a745; /* Greenish tint */
       margin: 0;
+      background-color: rgba(40, 167, 69, 0.1); /* Slight green tint */
+      padding: 10px;
+      border-radius: 5px;
+      display: inline-block;
+    }
+    .highlight-guess-certain {
+      background-color: rgba(40, 167, 69, 0.3); /* More green when certain */
     }
     .final-solution {
       font-size: 1.5em;
@@ -75,6 +97,14 @@
       font-weight: bold;
       margin-right: 5px;
     }
+    .note {
+      font-size: 0.9em;
+      color: #555;
+      margin-top: 10px;
+    }
+    .button-row {
+      margin-top: 20px; /* Increased gap between distance row and buttons row */
+    }
   </style>
 </head>
 <body>
@@ -89,6 +119,10 @@
   {% if contradiction %}
     <div class="section contradiction">
       Contradictory data! No possible targets remain.
+      <div class="note">
+        Please contact Rakshann to report this discrepancy :( <br>
+        SS the game screen so that he can focus his troubleshoot :)
+      </div>
     </div>
     <div class="section">
       <form method="POST">
@@ -119,10 +153,11 @@
           </div>
           <div>
             <label>Distance:</label>
-            <input type="number" name="first_distance_input" required>
+            <input type="number" name="first_distance_input" min="0">
           </div>
-          <div>
-            <button type="submit" class="btn">Submit First Guess</button>
+          <div class="button-row">
+            <button type="submit" name="action" value="submit_distance" class="btn">Submit Distance</button>
+            <button type="submit" name="action" value="adjacent" class="btn btn-adjacent">Adjacent</button>
           </div>
         </form>
       </div>
@@ -130,7 +165,7 @@
       <!-- ONGOING GAME -->
       <div class="section">
         <p>Your Next Guess:</p>
-        <p class="highlight-guess">{{ current_guess|upper }}</p>
+        <p class="highlight-guess{% if possible_count == 1 %} highlight-guess-certain{% endif %}">{{ current_guess|upper }}</p>
         <p>Remaining possibilities: {{ possible_count }}</p>
       </div>
 
@@ -139,14 +174,14 @@
         <form method="POST" style="display: inline-block;">
           <input type="hidden" name="form_type" value="feedback">
           <input type="hidden" name="action" value="cooler">
-          <button type="submit" class="btn">Cooler</button>
+          <button type="submit" class="btn btn-cooler">Cooler</button>
         </form>
 
         <!-- ADJACENT BUTTON -->
         <form method="POST" style="display: inline-block;">
           <input type="hidden" name="form_type" value="feedback">
           <input type="hidden" name="action" value="adjacent">
-          <button type="submit" class="btn">Adjacent</button>
+          <button type="submit" class="btn btn-adjacent">Adjacent</button>
         </form>
       </div>
 
@@ -158,15 +193,6 @@
           <label>Warmer distance:</label>
           <input type="number" name="warmer_distance_input" required>
           <button type="submit" class="btn">Submit</button>
-        </form>
-      </div>
-
-      <div class="section">
-        <!-- DONE -->
-        <form method="POST" style="display: inline-block;">
-          <input type="hidden" name="form_type" value="feedback">
-          <input type="hidden" name="action" value="done">
-          <button type="submit" class="btn btn-secondary">Done</button>
         </form>
       </div>
 
