@@ -111,23 +111,24 @@ SYNONYM_MAP = {
 
 # ------------------- 1.3 Sample Size Mapping -------------------
 SAMPLE_SIZE_MAP = {
-    'canada': 1600,
-    'russia': 1200,
-    'china': 800,
-    'united states': 800,
+    'canada': 2000,
+    'russia': 1500,
+    'china': 1000,
+    'united states': 1000,
+    'indonesia': 1000,
+    'philippines': 1000,
     'norway': 800,
-    'indonesia': 800,
     'brazil': 800,
     'australia': 800,
     'india': 800,
-    'philippines': 800,
     'japan': 800,
     'argentina': 800,
     'mexico': 800,
     'kazakhstan': 800,
+    'united kingdom':800,
 }
 
-DEFAULT_SAMPLE_SIZE = 600
+DEFAULT_SAMPLE_SIZE = 700
 
 def get_sample_size(country: str) -> int:
     """
@@ -138,15 +139,18 @@ def get_sample_size(country: str) -> int:
 # ------------------- 1.4 Mainland (Polygon) Filtering Rules -------------------
 POLYGON_SELECTION_RULES = {
     'angola':            {'count': 2},
+    'australia':         {'count': 5},
     'azerbaijan':        {'count': 2},
     'bahamas':           {'count': 3},
     'canada':            {'all':True},
     'chile':             {'distance_threshold': 500},   # exclude Easter Island
     'china':             {'count': 2},                  # Mainland + Hainan (exclude Taiwan)
     'cuba':              {'count': 2},
-    'denmark':           {'count': 3},                  # exclude Faroe, Greenland
+    'denmark':           {'custom_denmark': True},      # Updated for Denmark
     'equatorial guinea': {'count': 2},
     'equador':           {'count': 2},
+    'estonia':           {'count': 2},
+    'finland':           {'count': 2},
     'france':            {'count': 1},                  # exclude Corsica
     'greece':            {'count': 3},                  # Mainland, Crete, Lesbos
     'indonesia':         {'all': True},
@@ -167,44 +171,47 @@ POLYGON_SELECTION_RULES = {
     'sweden':            {'count': 2},
     'solomon islands':   {'count': 4},
     'timor-leste':       {'count': 2},
-    'turkey':            {'count': 1},
-    'united kingdom':    {'count': 3},   # GB, Northern Ireland, Lewis/Harris
+    'turkey':            {'count': 2},
+    # Removed 'united kingdom' from here to handle it separately
     'united states':     {'all': True},  # but filter out non-states below
     'venezuela':         {'count': 1},
+    'vanuatu':           {'count': 2},
     'yemen':             {'count': 2},
+    'ukraine':           {'custom_ukraine': True},   # Added for Crimea
+    'croatia':           {'custom_croatia': True},   # Added for buffer points
 }
 
 # ------------------- 1.5 Micronation Coordinates (no polygons) ---------------
 MICRONATION_COORDS = {
-    "andorra": (1.6016, 42.5424),
-    "antigua and barbuda": (-61.8456, 17.0747),
-    "bahrain": (50.5577, 26.0667),
-    "barbados": (-59.5432, 13.1939),
-    "cape verde": (-23.5087, 14.9300),
-    "comoros": (43.3333, -11.6455),
-    "dominica": (-61.3710, 15.4239),
-    "grenada": (-61.6792, 12.1165),
-    "kiribati": (173.0314, 1.3382),
-    "liechtenstein": (9.5537, 47.1660),
-    "maldives": (73.5093, 4.1755),
-    "malta": (14.3754, 35.9375),
-    "marshall islands": (171.1854, 7.1315),
-    "mauritius": (57.5522, -20.3484),
-    "micronesia": (158.2239, 6.9248),
-    "monaco": (7.4128, 43.7306),
-    "nauru": (166.9315, -0.5338),
-    "palau": (134.4795, 7.3419),
-    "saint kitts and nevis": (-62.7830, 17.3578),
-    "saint lucia": (-60.9789, 13.9094),
-    "saint vincent and the grenadines": (-61.2872, 13.2528),
-    "samoa": (-172.1046, -13.7590),
-    "san marino": (12.4578, 43.9424),
-    "sao tome and principe": (6.7273, 0.3302),
-    "seychelles": (55.4915, -4.6796),
-    "singapore": (103.8198, 1.3521),
-    "tonga": (-175.1982, -21.1789),
-    "tuvalu": (179.2168, -8.5199),
-    "vatican city": (12.4534, 41.9029)
+    "andorra": [(1.6016, 42.5424)],
+    "antigua and barbuda": [(-61.8456, 17.0747)],
+    "bahrain": [(50.5577, 26.0667)],
+    "barbados": [(-59.5432, 13.1939)],
+    "cape verde": [(-23.5087, 14.9300)],
+    "comoros": [(43.3333, -11.6455)],
+    "dominica": [(-61.3710, 15.4239)],
+    "grenada": [(-61.6792, 12.1165)],
+    "kiribati": [(173.0314, 1.3382)],
+    "liechtenstein": [(9.5537, 47.1660)],
+    "maldives": [(73.5093, 4.1755), (73.5, 3.2)],  # Added second point (3.2N, 73.5E)
+    "malta": [(14.3754, 35.9375)],
+    "marshall islands": [(171.1854, 7.1315)],
+    "mauritius": [(57.5522, -20.3484)],
+    "micronesia": [(158.2239, 6.9248)],
+    "monaco": [(7.4128, 43.7306)],
+    "nauru": [(166.9315, -0.5338)],
+    "palau": [(134.4795, 7.3419)],
+    "saint kitts and nevis": [(-62.7830, 17.3578)],
+    "saint lucia": [(-60.9789, 13.9094)],
+    "saint vincent and the grenadines": [(-61.2872, 13.2528)],
+    "samoa": [(-172.1046, -13.7590)],
+    "san marino": [(12.4578, 43.9424)],
+    "sao tome and principe": [(6.7273, 0.3302)],
+    "seychelles": [(55.4915, -4.6796)],
+    "singapore": [(103.8198, 1.3521)],
+    "tonga": [(-175.1982, -21.1789)],
+    "tuvalu": [(179.2168, -8.5199)],
+    "vatican city": [(12.4534, 41.9029)]
 }
 
 ##############################################################################
@@ -332,6 +339,40 @@ def distance_point_to_polygon(point_lon, point_lat, poly, samples):
 
     return min_dist if min_dist != float('inf') else None
 
+def distance_multiple_points_to_multiple_points(points1, points2):
+    """
+    Compute the minimal geodesic distance between two sets of points.
+    """
+    min_dist = float('inf')
+    for lon1, lat1 in points1:
+        for lon2, lat2 in points2:
+            d = distance_point_to_point(lon1, lat1, lon2, lat2)
+            if d < min_dist:
+                min_dist = d
+    return min_dist if min_dist != float('inf') else None
+
+def distance_multiple_points_to_polygon(points, poly, samples):
+    """
+    Compute the minimal geodesic distance between a set of points and a polygon.
+    """
+    min_dist = float('inf')
+    for lon, lat in points:
+        d = distance_point_to_polygon(lon, lat, poly, samples)
+        if d is not None and d < min_dist:
+            min_dist = d
+    return min_dist if min_dist != float('inf') else None
+
+def create_geodesic_buffer(center_lon, center_lat, radius_km, num_points=360):
+    """
+    Create a geodesic buffer polygon around a center point with a specified radius in kilometers.
+    """
+    angles = list(range(0, 360, max(1, int(360 / num_points))))
+    buffer_points = []
+    for azimuth in angles:
+        lon, lat, _ = geod.fwd(center_lon, center_lat, azimuth, radius_km * 1000)
+        buffer_points.append((lon, lat))
+    return Polygon(buffer_points)
+
 ##############################################################################
 # 3. MAINLAND FILTERING LOGIC
 ##############################################################################
@@ -373,7 +414,10 @@ def filter_polygons(multi_or_poly, country_name):
             c = p.centroid
             return (cr_min_lon <= c.x <= cr_max_lon) and (cr_min_lat <= c.y <= cr_max_lat)
 
-        polygons = [p for p in polygons if not is_kaliningrad(p) and not is_crimea(p)]
+        # Identify Crimea polygons
+        crimea_polygons = [p for p in polygons if is_crimea(p)]
+        # Remove Crimea from Russia's polygons
+        polygons = [p for p in polygons if not is_crimea(p) and not is_kaliningrad(p)]
 
     # 2) US => only 50 states (exclude territories)
     if country_name == 'united states':
@@ -430,7 +474,83 @@ def filter_polygons(multi_or_poly, country_name):
         else:
             return norway_buffer  # If no mainland polygon, return only the buffer
 
-    # 5) Standard selection
+    # 5) United Kingdom => Only within 620 km from Manchester (53.48N, 2.25W)
+    if country_name == 'united kingdom':
+        # Define Manchester coordinates
+        manchester_lon, manchester_lat = -2.25, 53.48
+
+        # Create a geodesic buffer of 620 km around Manchester
+        buffer_polygon = create_geodesic_buffer(manchester_lon, manchester_lat, 620)
+
+        # Intersect the UK's polygons with the buffer
+        filtered_polygons = [p.intersection(buffer_polygon) for p in polygons]
+        # Remove empty geometries after intersection
+        filtered_polygons = [p for p in filtered_polygons if p and not p.is_empty]
+
+        if not filtered_polygons:
+            return None
+
+        # Combine all filtered polygons into a single MultiPolygon
+        return unary_union(filtered_polygons)
+
+    # 6) Croatia => Add three buffer points
+    if country_name == 'croatia':
+        # Sort polygons by area and select the largest (assuming it's the mainland)
+        polygons_sorted = sorted(polygons, key=lambda p: p.area, reverse=True)
+        main_poly = polygons_sorted[0] if polygons_sorted else None
+
+        # Define the three points to add
+        croatia_points = [
+            Point(18.5, 42.4),  # (42.4N, 18.5E)
+            Point(18.1, 42.6),  # (42.6N, 18.1E)
+            Point(17.8, 42.9)   # (42.9N, 17.8E)
+        ]
+        # Create buffer polygons around each point
+        croatia_buffers = [pt.buffer(0.05) for pt in croatia_points]  # Buffer size same as Norway
+
+        # Combine the mainland polygon with the buffers
+        if main_poly:
+            combined = unary_union([main_poly] + croatia_buffers)
+            return combined
+        else:
+            return MultiPolygon(croatia_buffers)  # If no mainland polygon, return only the buffers
+
+    # 7) Ukraine => Add Crimea polygon
+    if country_name == 'ukraine':
+        # Define Crimea's approximate polygon
+        # For simplicity, we'll create a rectangular polygon covering Crimea's bounding box
+        # In a real scenario, you should use precise polygon data for Crimea
+        crimea_polygon = Polygon([
+            (32.0, 44.0),
+            (36.5, 44.0),
+            (36.5, 46.5),
+            (32.0, 46.5),
+            (32.0, 44.0)
+        ])
+
+        # Combine existing polygons with Crimea
+        polygons.append(crimea_polygon)
+
+    # 8) Denmark => Custom filtering within 320 km of Copenhagen
+    if country_name == 'denmark':
+        # Define Copenhagen coordinates
+        copenhagen_lon, copenhagen_lat = 12.56, 55.68
+
+        # Create a geodesic buffer of 320 km around Copenhagen
+        buffer_polygon = create_geodesic_buffer(copenhagen_lon, copenhagen_lat, 320)
+
+        # Intersect Denmark's polygons with the buffer
+        filtered_polygons = [p.intersection(buffer_polygon) for p in polygons]
+        # Remove empty geometries after intersection
+        filtered_polygons = [p for p in filtered_polygons if p and not p.is_empty]
+
+        if not filtered_polygons:
+            return None
+
+        # Combine all filtered polygons into a single MultiPolygon
+        return unary_union(filtered_polygons)
+
+    # 9) Standard selection
     polygons_sorted = sorted(polygons, key=lambda p: p.area, reverse=True)
     if not polygons_sorted:
         return None
@@ -439,6 +559,10 @@ def filter_polygons(multi_or_poly, country_name):
 
     if 'all' in rule and rule['all'] == True:
         return MultiPolygon(polygons_sorted)
+
+    if 'custom_denmark' in rule:
+        # Already handled above
+        pass
 
     if 'count' in rule:
         n = rule['count']
@@ -499,6 +623,9 @@ def main():
     print(f"Found {total_rows} rows in the shapefile. Processing...")
 
     country_geoms = {}
+    # To store Crimea polygons to assign to Ukraine
+    crimea_polygons_to_assign = []
+
     for idx, (index, row) in enumerate(gdf.iterrows(), start=1):
         print(f"[Polygon Extraction] {idx}/{total_rows} => ", end="")
         country_name = extract_valid_country(row)
@@ -510,6 +637,17 @@ def main():
         raw_geom = row.geometry
         filtered = filter_polygons(raw_geom, country_name)
         if filtered and not filtered.is_empty:
+            # If Russia and filtered excluded Crimea, collect Crimea polygons
+            if country_name == 'russia':
+                # Collect Crimea polygons
+                if 'crimea_polygons' in locals():
+                    pass  # Already handled
+                # The 'filter_polygons' function adds Crimea to Ukraine, so no need here
+            # If Ukraine, add Crimea's polygon
+            if country_name == 'ukraine':
+                # Already handled in filter_polygons
+                pass
+
             # If repeated: union
             if country_name not in country_geoms:
                 country_geoms[country_name] = filtered
@@ -563,23 +701,23 @@ def main():
 
             # Case B: Both are micronations
             elif (c1 in MICRONATION_COORDS) and (c2 in MICRONATION_COORDS):
-                lon1, lat1 = MICRONATION_COORDS[c1]
-                lon2, lat2 = MICRONATION_COORDS[c2]
-                dist_km = distance_point_to_point(lon1, lat1, lon2, lat2)
-                distance_map[c1][c2] = round(dist_km, 1)
+                points1 = MICRONATION_COORDS[c1]
+                points2 = MICRONATION_COORDS[c2]
+                dist_km = distance_multiple_points_to_multiple_points(points1, points2)
+                distance_map[c1][c2] = round(dist_km, 1) if dist_km is not None else 9999999
                 distance_map[c2][c1] = distance_map[c1][c2]  # Symmetric
 
             # Case C: c1 has polygon, c2 is micronation
             elif poly1 and (c2 in MICRONATION_COORDS):
-                lon2, lat2 = MICRONATION_COORDS[c2]
-                dist_km = distance_point_to_polygon(lon2, lat2, poly1, sample_size1)
+                points2 = MICRONATION_COORDS[c2]
+                dist_km = distance_multiple_points_to_polygon(points2, poly1, sample_size1)
                 distance_map[c1][c2] = round(dist_km, 1) if dist_km is not None else 9999999
                 distance_map[c2][c1] = distance_map[c1][c2]  # Symmetric
 
             # Case D: c2 has polygon, c1 is micronation
             elif poly2 and (c1 in MICRONATION_COORDS):
-                lon1, lat1 = MICRONATION_COORDS[c1]
-                dist_km = distance_point_to_polygon(lon1, lat1, poly2, sample_size2)
+                points1 = MICRONATION_COORDS[c1]
+                dist_km = distance_multiple_points_to_polygon(points1, poly2, sample_size2)
                 distance_map[c1][c2] = round(dist_km, 1) if dist_km is not None else 9999999
                 distance_map[c2][c1] = distance_map[c1][c2]  # Symmetric
 
